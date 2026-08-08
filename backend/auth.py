@@ -33,10 +33,15 @@ def decode_jwt(token: str):
 
 
 def set_auth_cookies(response, user_id: int):
+    """
+    Legacy cookie support for same-site deployments.
+    GitHub Pages + Render are cross-site, so the frontend also uses bearer token auth.
+    """
     token = create_jwt(user_id)
     csrf = secrets.token_urlsafe(32)
     max_age = current_app.config["JWT_EXPIRES_DAYS"] * 24 * 60 * 60
     secure = not current_app.debug
+
     response.set_cookie(
         current_app.config["JWT_COOKIE_NAME"],
         token,
@@ -64,8 +69,15 @@ def clear_auth_cookies(response):
     return response
 
 
+def _get_bearer_token():
+    authorization = request.headers.get("Authorization", "")
+    if authorization.startswith("Bearer "):
+        return authorization[7:].strip()
+    return ""
+
+
 def get_current_user_id():
-    token = request.cookies.get(current_app.config["JWT_COOKIE_NAME"])
+    token = _get_bearer_token() or request.cookies.get(current_app.config["JWT_COOKIE_NAME"])
     if not token:
         return None
     try:
@@ -81,12 +93,16 @@ def require_auth(fn):
         user_id = get_current_user_id()
         if not user_id:
             return jsonify({"error": "Authentication required."}), 401
+
         g.user_id = user_id
-        csrf_cookie = request.cookies.get(current_app.config["JWT_COOKIE_CSRF_NAME"])
-        if request.method in {"POST", "PATCH", "PUT", "DELETE"}:
+
+        # Keep CSRF validation only for legacy cookie-authenticated requests.
+        if not _get_bearer_token() and request.method in {"POST", "PATCH", "PUT", "DELETE"}:
+            csrf_cookie = request.cookies.get(current_app.config["JWT_COOKIE_CSRF_NAME"])
             csrf_header = request.headers.get("X-CSRF-Token")
             if not csrf_cookie or not csrf_header or csrf_cookie != csrf_header:
                 return jsonify({"error": "CSRF validation failed."}), 403
+
         return fn(*args, **kwargs)
+
     return wrapper
-  
