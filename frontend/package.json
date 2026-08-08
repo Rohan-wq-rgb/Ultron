@@ -1,0 +1,24 @@
+{
+  "name": "ultron-ai-frontend",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "homepage": "https://yourusername.github.io/ultron-ai/",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview --host"
+  },
+  "dependencies": {
+    "framer-motion": "^11.11.9",
+    "lucide-react": "^0.451.0",
+    "marked": "^14.1.2",
+    "dompurify": "^3.1.7",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.3.1",
+    "vite": "^5.4.2"
+  }
+}
