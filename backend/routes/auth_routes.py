@@ -2,7 +2,15 @@ from flask import Blueprint, jsonify, request
 from sqlalchemy.exc import IntegrityError
 from database import db
 from models import User
-from auth import hash_password, verify_password, set_auth_cookies, clear_auth_cookies, require_auth, get_current_user_id
+from auth import (
+    hash_password,
+    verify_password,
+    set_auth_cookies,
+    clear_auth_cookies,
+    require_auth,
+    get_current_user_id,
+    create_jwt,
+)
 
 auth_bp = Blueprint("auth_bp", __name__, url_prefix="/api/auth")
 
@@ -20,13 +28,21 @@ def register():
 
     user = User(email=email, password_hash=hash_password(password))
     db.session.add(user)
+
     try:
         db.session.commit()
     except IntegrityError:
         db.session.rollback()
         return jsonify({"error": "An account with that email already exists."}), 409
 
-    response = jsonify({"message": "Registration successful.", "user": {"email": user.email}})
+    token = create_jwt(user.id)
+    response = jsonify({
+        "message": "Registration successful.",
+        "token": token,
+        "user": {
+            "email": user.email,
+        },
+    })
     return set_auth_cookies(response, user.id)
 
 
@@ -40,7 +56,14 @@ def login():
     if not user or not verify_password(password, user.password_hash):
         return jsonify({"error": "Invalid email or password."}), 401
 
-    response = jsonify({"message": "Login successful.", "user": {"email": user.email}})
+    token = create_jwt(user.id)
+    response = jsonify({
+        "message": "Login successful.",
+        "token": token,
+        "user": {
+            "email": user.email,
+        },
+    })
     return set_auth_cookies(response, user.id)
 
 
@@ -58,6 +81,7 @@ def me():
     user = User.query.get(user_id)
     if not user:
         return jsonify({"error": "User not found."}), 404
+
     return jsonify({
         "user": {
             "id": user.id,
@@ -65,4 +89,3 @@ def me():
             "created_at": user.created_at.isoformat(),
         }
     })
-  
