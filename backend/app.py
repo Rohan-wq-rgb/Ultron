@@ -1,16 +1,19 @@
 import os
 from pathlib import Path
+
+from dotenv import load_dotenv
+
+BASE_DIR = Path(__file__).resolve().parent
+
+load_dotenv(BASE_DIR / ".env")
+
 from flask import Flask, jsonify
 from flask_cors import CORS
-from dotenv import load_dotenv
 from config import Config
 from database import db, migrate
 from auth_routes import auth_bp
 from routes.api_key_routes import api_key_bp
 from routes.chat_routes import chat_bp
-
-BASE_DIR = Path(__file__).resolve().parent
-load_dotenv(BASE_DIR / ".env")
 
 
 def create_app():
