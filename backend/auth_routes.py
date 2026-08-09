@@ -99,7 +99,7 @@ def _otp_max_attempts():
 # CREATE / REPLACE OTP
 # ============================================================
 
- def _create_and_send_otp(user):
+def _create_and_send_otp(user):
     """
     Prepare a new OTP.
 
