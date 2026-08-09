@@ -101,20 +101,30 @@ export default function App() {
     setSystemPrompt(data.chat?.system_prompt || defaultSystemPrompt)
   }
 
-  async function handleAuthSubmit(e) {
+    async function handleAuthSubmit(e) {
     e.preventDefault()
     setError('')
     try {
       if (authMode === 'login') {
         await api.login(authForm.email, authForm.password)
-      } else {
-        await api.register(authForm.email, authForm.password)
+        await loadSession()
+        return
       }
-      await loadSession()
+
+      const res = await api.register(authForm.email, authForm.password)
+      if (res.verification_required) {
+        setPendingEmail(authForm.email)
+        setAuthStep('verify')
+        setError('Verification code sent to your email.')
+      }
     } catch (err) {
+      if (err?.status === 403 && err.message?.toLowerCase().includes('verify')) {
+        setPendingEmail(authForm.email)
+        setAuthStep('verify')
+      }
       setError(err.message)
     }
-  }
+    }
 
   async function handleLogout() {
     try {
@@ -397,4 +407,7 @@ export default function App() {
     </div>
   )
         }
+  const [authStep, setAuthStep] = useState('credentials')
+  const [otp, setOtp] = useState('')
+  const [pendingEmail, setPendingEmail] = useState('')
               
