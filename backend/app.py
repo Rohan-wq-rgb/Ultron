@@ -25,7 +25,7 @@ def create_app():
         app,
         origins=origins,
         supports_credentials=True,
-        allow_headers=["Content-Type", "X-CSRF-Token"],
+        allow_headers=["Content-Type", "Authorization", "X-CSRF-Token"],
         methods=["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
     )
 
