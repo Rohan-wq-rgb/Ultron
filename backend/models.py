@@ -78,4 +78,35 @@ class EmailOtp(db.Model):
     )
 
     user = relationship("User")
+class EmailVerification(db.Model):
+    __tablename__ = "email_verifications"
+
+    id = db.Column(db.Integer, primary_key=True)
+
+    email = db.Column(
+        db.String(255),
+        nullable=False,
+        index=True
+    )
+
+    otp_hash = db.Column(
+        db.String(255),
+        nullable=False
+    )
+
+    expires_at = db.Column(
+        db.DateTime(timezone=True),
+        nullable=False
+    )
+
+    attempts = db.Column(
+        db.Integer,
+        default=0,
+        nullable=False
+    )
+
+    created_at = db.Column(
+        db.DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc)
+    )
   
