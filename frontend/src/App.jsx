@@ -15,7 +15,8 @@ import MessageBubble from './components/MessageBubble'
 import SettingsPanel from './components/SettingsPanel'
 import { useVoiceTyping } from './hooks/useVoiceTyping'
 
-const defaultSystemPrompt = `You are ULTRON, an advanced AI assistant.
+const defaultSystemPrompt = `
+You are ULTRON, an advanced AI assistant.
 
 You are intelligent, precise, calm, helpful and technically capable.
 
@@ -23,7 +24,8 @@ Give clear answers.
 Think carefully before answering.
 Use structured explanations when useful.
 Never pretend to have capabilities you do not have.
-Prioritize accuracy and user safety.`
+Prioritize accuracy and user safety.
+`.trim()
 
 const initialForm = {
   email: '',
@@ -40,14 +42,12 @@ function getCsrfToken() {
 }
 
 export default function App() {
-  // =========================
-  // AUTH STATE
-  // =========================
+  /* =========================
+     AUTH
+  ========================= */
 
   const [authMode, setAuthMode] = useState('login')
 
-  // credentials = email/password
-  // otp = OTP verification screen
   const [authStep, setAuthStep] = useState('credentials')
 
   const [authForm, setAuthForm] = useState(initialForm)
@@ -60,11 +60,13 @@ export default function App() {
 
   const [loadingAuth, setLoadingAuth] = useState(true)
 
+  const [authLoading, setAuthLoading] = useState(false)
+
   const [error, setError] = useState('')
 
-  // =========================
-  // SETTINGS
-  // =========================
+  /* =========================
+     SETTINGS
+  ========================= */
 
   const [showSettings, setShowSettings] = useState(false)
 
@@ -72,9 +74,9 @@ export default function App() {
 
   const [apiKeyConfigured, setApiKeyConfigured] = useState(false)
 
-  // =========================
-  // CHAT STATE
-  // =========================
+  /* =========================
+     CHAT
+  ========================= */
 
   const [chats, setChats] = useState([])
 
@@ -92,9 +94,9 @@ export default function App() {
 
   const [sending, setSending] = useState(false)
 
-  // =========================
-  // AI SETTINGS
-  // =========================
+  /* =========================
+     AI SETTINGS
+  ========================= */
 
   const [model, setModel] = useState(
     'llama-3.3-70b-versatile'
@@ -107,9 +109,9 @@ export default function App() {
   const [systemPrompt, setSystemPrompt] =
     useState(defaultSystemPrompt)
 
-  // =========================
-  // REFS
-  // =========================
+  /* =========================
+     REFS
+  ========================= */
 
   const inputRef = useRef(null)
 
@@ -117,9 +119,9 @@ export default function App() {
 
   const csrfToken = getCsrfToken()
 
-  // =========================
-  // VOICE
-  // =========================
+  /* =========================
+     VOICE
+  ========================= */
 
   const {
     supported: voiceSupported,
@@ -133,29 +135,29 @@ export default function App() {
     )
   })
 
-  // =========================
-  // FILTER CHATS
-  // =========================
+  /* =========================
+     CHAT FILTER
+  ========================= */
 
   const visibleChats = useMemo(() => {
+    const query = search.toLowerCase()
+
     return chats.filter((chat) =>
-      chat.title
-        .toLowerCase()
-        .includes(search.toLowerCase())
+      chat.title.toLowerCase().includes(query)
     )
   }, [chats, search])
 
-  // =========================
-  // INITIAL SESSION
-  // =========================
+  /* =========================
+     INITIAL SESSION
+  ========================= */
 
   useEffect(() => {
     loadSession()
   }, [])
 
-  // =========================
-  // AUTO SCROLL
-  // =========================
+  /* =========================
+     AUTO SCROLL
+  ========================= */
 
   useEffect(() => {
     endRef.current?.scrollIntoView({
@@ -163,18 +165,17 @@ export default function App() {
     })
   }, [messages])
 
-  // =========================
-  // LOAD SESSION
-  // =========================
+  /* =========================
+     LOAD SESSION
+  ========================= */
 
   async function loadSession() {
     try {
-      const me = await api.me()
+      const data = await api.me()
 
-      setUser(me.user)
+      setUser(data.user)
 
       await loadChats()
-
       await loadApiKeyStatus()
     } catch {
       setUser(null)
@@ -183,45 +184,35 @@ export default function App() {
     }
   }
 
-  // =========================
-  // LOAD CHATS
-  // =========================
+  /* =========================
+     LOAD CHATS
+  ========================= */
 
   async function loadChats() {
     const data = await api.listChats()
 
-    const chatList = data.chats || []
+    const list = data.chats || []
 
-    setChats(chatList)
+    setChats(list)
 
-    if (!chatList.length) {
+    if (!list.length) {
       setActiveChatId(null)
       setActiveChat(null)
       setMessages([])
       return
     }
 
-    if (!activeChatId) {
-      setActiveChatId(chatList[0].id)
-
-      await openChat(chatList[0].id)
-
-      return
-    }
-
-    const found =
-      chatList.find(
+    const selected =
+      list.find(
         (chat) => chat.id === activeChatId
-      ) || chatList[0]
+      ) || list[0]
 
-    if (found) {
-      await openChat(found.id)
-    }
+    await openChat(selected.id)
   }
 
-  // =========================
-  // API KEY STATUS
-  // =========================
+  /* =========================
+     LOAD API KEY STATUS
+  ========================= */
 
   async function loadApiKeyStatus() {
     try {
@@ -235,9 +226,9 @@ export default function App() {
     }
   }
 
-  // =========================
-  // OPEN CHAT
-  // =========================
+  /* =========================
+     OPEN CHAT
+  ========================= */
 
   async function openChat(id) {
     try {
@@ -271,12 +262,12 @@ export default function App() {
     }
   }
 
-  // =========================
-  // AUTH SUBMIT
-  // =========================
+  /* =========================
+     REGISTER / LOGIN
+  ========================= */
 
-  async function handleAuthSubmit(e) {
-    e.preventDefault()
+  async function handleAuthSubmit(event) {
+    event.preventDefault()
 
     setError('')
 
@@ -288,44 +279,25 @@ export default function App() {
       setError(
         'Please enter your email and password.'
       )
-
       return
     }
 
+    setAuthLoading(true)
+
     try {
-      // =========================
-      // LOGIN
-      // =========================
+      if (authMode === 'register') {
+        /*
+         * Registration does NOT immediately
+         * create/login the user.
+         *
+         * Backend sends an OTP.
+         */
 
-      if (authMode === 'login') {
-        await api.login(email, password)
+        const result = await api.register(
+          email,
+          password
+        )
 
-        await loadSession()
-
-        return
-      }
-
-      // =========================
-      // REGISTER
-      // =========================
-
-      const result = await api.register(
-        email,
-        password
-      )
-
-      /*
-       * Backend should return:
-       *
-       * {
-       *   otp_required: true,
-       *   email: "user@example.com"
-       * }
-       */
-
-      if (
-        result?.otp_required === true
-      ) {
         setPendingEmail(
           result.email || email
         )
@@ -333,90 +305,103 @@ export default function App() {
         setOtp('')
 
         setAuthStep('otp')
+      } else {
+        await api.login(
+          email,
+          password
+        )
 
-        setError('')
-
-        return
+        await loadSession()
       }
-
-      // Fallback if backend does not require OTP
-      await loadSession()
     } catch (err) {
       setError(
         err.message ||
           'Authentication failed.'
       )
+    } finally {
+      setAuthLoading(false)
     }
   }
 
-  // =========================
-  // VERIFY OTP
-  // =========================
+  /* =========================
+     VERIFY OTP
+  ========================= */
 
-  async function handleVerifyOtp(e) {
-    e.preventDefault()
+  async function handleVerifyOtp(event) {
+    event.preventDefault()
 
     setError('')
 
-    const cleanOtp = otp
-      .replace(/\D/g, '')
-      .slice(0, 6)
-
-    if (cleanOtp.length !== 6) {
+    if (!otp || otp.length !== 6) {
       setError(
-        'Please enter the 6-digit OTP.'
+        'Enter the 6-digit OTP sent to your email.'
       )
-
       return
     }
 
-    if (!pendingEmail) {
-      setError(
-        'Verification email is missing. Please register again.'
-      )
-
-      return
-    }
+    setAuthLoading(true)
 
     try {
       await api.verifyOtp(
         pendingEmail,
-        cleanOtp
+        otp
       )
 
-      setOtp('')
+      /*
+       * OTP verification completed.
+       *
+       * Try to establish the session automatically.
+       */
 
-      setPendingEmail('')
+      try {
+        await api.login(
+          pendingEmail,
+          authForm.password
+        )
 
-      setAuthStep('credentials')
+        await loadSession()
+      } catch {
+        /*
+         * If backend doesn't automatically
+         * support login after verification,
+         * return user to login.
+         */
 
-      setAuthMode('login')
+        setAuthMode('login')
+        setAuthStep('credentials')
+        setAuthForm({
+          email: pendingEmail,
+          password: '',
+        })
+        setOtp('')
 
-      setError(
-        'Email verified successfully. Please login.'
-      )
+        setError(
+          'Email verified successfully. Please login.'
+        )
+      }
     } catch (err) {
       setError(
         err.message ||
           'Invalid or expired OTP.'
       )
+    } finally {
+      setAuthLoading(false)
     }
   }
 
-  // =========================
-  // RESEND OTP
-  // =========================
+  /* =========================
+     RESEND OTP
+  ========================= */
 
   async function handleResendOtp() {
     setError('')
 
     if (!pendingEmail) {
-      setError(
-        'Email address is missing.'
-      )
-
+      setError('Email address is missing.')
       return
     }
+
+    setAuthLoading(true)
 
     try {
       await api.resendOtp(
@@ -431,14 +416,16 @@ export default function App() {
     } catch (err) {
       setError(
         err.message ||
-          'Could not resend OTP.'
+          'Unable to resend OTP.'
       )
+    } finally {
+      setAuthLoading(false)
     }
   }
 
-  // =========================
-  // LOGOUT
-  // =========================
+  /* =========================
+     LOGOUT
+  ========================= */
 
   async function handleLogout() {
     try {
@@ -468,20 +455,21 @@ export default function App() {
     }
   }
 
-  // =========================
-  // SAVE API KEY
-  // =========================
+  /* =========================
+     SAVE GROQ API KEY
+  ========================= */
 
   async function handleSaveApiKey(token) {
+    setError('')
+
+    if (!apiKey.trim()) {
+      setError(
+        'Please enter your Groq API key.'
+      )
+      return
+    }
+
     try {
-      if (!apiKey.trim()) {
-        setError(
-          'Please enter your Groq API key.'
-        )
-
-        return
-      }
-
       await api.saveApiKey(
         apiKey.trim(),
         token
@@ -492,16 +480,14 @@ export default function App() {
       setApiKeyConfigured(true)
 
       setShowSettings(false)
-
-      setError('')
     } catch (err) {
       setError(err.message)
     }
   }
 
-  // =========================
-  // NEW CHAT
-  // =========================
+  /* =========================
+     NEW CHAT
+  ========================= */
 
   async function newChat() {
     try {
@@ -529,9 +515,9 @@ export default function App() {
     }
   }
 
-  // =========================
-  // SAVE CHAT SETTINGS
-  // =========================
+  /* =========================
+     SAVE CHAT SETTINGS
+  ========================= */
 
   async function saveActiveChatMeta(
     next = {}
@@ -560,64 +546,56 @@ export default function App() {
     }
   }
 
-  // =========================
-  // COMMAND SYSTEM
-  // =========================
+  /* =========================
+     COMMAND SYSTEM
+  ========================= */
 
   function handleCommand(text) {
-    const cmd =
+    const command =
       text.trim().toLowerCase()
 
-    if (!cmd.startsWith('/')) {
+    if (!command.startsWith('/')) {
       return false
     }
 
-    if (cmd === '/clear') {
-      setMessages([])
+    switch (command) {
+      case '/clear':
+        setMessages([])
+        return true
 
-      return true
+      case '/new':
+        newChat()
+        return true
+
+      case '/settings':
+        setShowSettings(true)
+        return true
+
+      case '/voice':
+        listening ? stop() : start()
+        return true
+
+      case '/history':
+        setCollapsed(false)
+        return true
+
+      case '/help':
+        setError(
+          'Commands: /help /clear /new /history /settings /voice'
+        )
+        return true
+
+      default:
+        setError(
+          `Unknown command: ${command}`
+        )
+        return true
     }
-
-    if (cmd === '/new') {
-      newChat()
-
-      return true
-    }
-
-    if (cmd === '/settings') {
-      setShowSettings(true)
-
-      return true
-    }
-
-    if (cmd === '/voice') {
-      listening
-        ? stop()
-        : start()
-
-      return true
-    }
-
-    if (cmd === '/history') {
-      setCollapsed(false)
-
-      return true
-    }
-
-    if (cmd === '/help') {
-      setError(
-        'Commands: /help /clear /new /history /settings /voice'
-      )
-
-      return true
-    }
-
-    return false
   }
 
-  // =========================
-  // SEND MESSAGE
-  // =========================
+  /* =========================
+     SEND MESSAGE
+  ========================= */
 
   async function sendMessage(
     textOverride
@@ -626,13 +604,10 @@ export default function App() {
       textOverride ?? input
     ).trim()
 
-    if (!text || sending) {
-      return
-    }
+    if (!text || sending) return
 
     if (handleCommand(text)) {
       setInput('')
-
       return
     }
 
@@ -656,16 +631,22 @@ export default function App() {
     try {
       let chatId = activeChatId
 
-      // Create chat if necessary
+      /*
+       * Create a chat first if necessary.
+       */
+
       if (!chatId) {
         const created =
           await api.createChat(
             {
-              title: 'New Chat',
+              title:
+                text.slice(0, 40) ||
+                'New Chat',
               model,
               temperature,
               max_tokens: maxTokens,
-              system_prompt: systemPrompt,
+              system_prompt:
+                systemPrompt,
             },
             csrfToken
           )
@@ -674,12 +655,10 @@ export default function App() {
 
         setActiveChatId(chatId)
 
-        setActiveChat(
-          created.chat
-        )
+        setActiveChat(created.chat)
       }
 
-      const res =
+      const response =
         await api.sendChat(
           {
             message: text,
@@ -687,22 +666,21 @@ export default function App() {
             model,
             temperature,
             max_tokens: maxTokens,
-            system_prompt:
-              systemPrompt,
+            system_prompt: systemPrompt,
           },
           csrfToken
         )
 
       setActiveChatId(
-        res.chat.id
+        response.chat.id
       )
 
       setActiveChat(
-        res.chat
+        response.chat
       )
 
       setMessages(
-        res.messages || []
+        response.messages || []
       )
 
       await loadChats()
@@ -721,18 +699,17 @@ export default function App() {
     }
   }
 
-  // =========================
-  // TEXT TO SPEECH
-  // =========================
+  /* =========================
+     TEXT TO SPEECH
+  ========================= */
 
   function speak(text) {
     if (
-      !('speechSynthesis' in window)
+      !window.speechSynthesis
     ) {
       setError(
         'Text-to-speech is not supported in this browser.'
       )
-
       return
     }
 
@@ -751,32 +728,30 @@ export default function App() {
   }
 
   function stopSpeaking() {
-    if (
-      'speechSynthesis' in window
-    ) {
-      window.speechSynthesis.cancel()
-    }
+    window.speechSynthesis.cancel()
   }
 
-  // =========================
-  // COPY MESSAGE
-  // =========================
+  /* =========================
+     COPY
+  ========================= */
 
   async function copyText(text) {
     try {
       await navigator.clipboard.writeText(
         text
       )
+
+      setError('Copied.')
     } catch {
       setError(
-        'Could not copy message.'
+        'Unable to copy text.'
       )
     }
   }
 
-  // =========================
-  // REGENERATE
-  // =========================
+  /* =========================
+     REGENERATE
+  ========================= */
 
   async function regenerateLast() {
     const lastUser =
@@ -794,9 +769,9 @@ export default function App() {
     }
   }
 
-  // =========================
-  // DELETE MESSAGE UI
-  // =========================
+  /* =========================
+     DELETE MESSAGE
+  ========================= */
 
   function deleteMessageLocal(id) {
     setMessages((prev) =>
@@ -807,9 +782,9 @@ export default function App() {
     )
   }
 
-  // =========================
-  // DELETE CHAT
-  // =========================
+  /* =========================
+     DELETE CHAT
+  ========================= */
 
   async function deleteChat(id) {
     try {
@@ -832,9 +807,9 @@ export default function App() {
     }
   }
 
-  // =========================
-  // LOADING SCREEN
-  // =========================
+  /* =========================
+     AUTH LOADING
+  ========================= */
 
   if (loadingAuth) {
     return (
@@ -844,9 +819,9 @@ export default function App() {
     )
   }
 
-  // =========================
-  // AUTH SCREEN
-  // =========================
+  /* =========================
+     AUTH SCREEN
+  ========================= */
 
   if (!user) {
     return (
@@ -860,61 +835,59 @@ export default function App() {
           <p className="auth-copy">
             A secure command-center
             assistant with voice typing,
-            encrypted Groq keys, and
+            encrypted Groq keys,
+            email verification and
             private chat history.
           </p>
 
-          {/* LOGIN / REGISTER SWITCH */}
+          {/* AUTH SWITCH */}
 
-          {authStep === 'credentials' && (
-            <div className="auth-switch">
+          <div className="auth-switch">
 
-              <button
-                type="button"
-                className={
-                  authMode === 'login'
-                    ? 'active'
-                    : ''
-                }
-                onClick={() => {
-                  setAuthMode('login')
-                  setAuthStep(
-                    'credentials'
-                  )
-                  setError('')
-                }}
-              >
-                Login
-              </button>
+            <button
+              className={
+                authMode === 'login'
+                  ? 'active'
+                  : ''
+              }
+              onClick={() => {
+                setAuthMode('login')
+                setAuthStep(
+                  'credentials'
+                )
+                setError('')
+                setOtp('')
+              }}
+            >
+              Login
+            </button>
 
-              <button
-                type="button"
-                className={
-                  authMode === 'register'
-                    ? 'active'
-                    : ''
-                }
-                onClick={() => {
-                  setAuthMode(
-                    'register'
-                  )
-                  setAuthStep(
-                    'credentials'
-                  )
-                  setError('')
-                }}
-              >
-                Register
-              </button>
+            <button
+              className={
+                authMode === 'register'
+                  ? 'active'
+                  : ''
+              }
+              onClick={() => {
+                setAuthMode(
+                  'register'
+                )
+                setAuthStep(
+                  'credentials'
+                )
+                setError('')
+                setOtp('')
+              }}
+            >
+              Register
+            </button>
 
-            </div>
-          )}
+          </div>
 
-          {/* =========================
-              EMAIL + PASSWORD
-          ========================= */}
+          {/* CREDENTIALS */}
 
-          {authStep === 'credentials' && (
+          {authStep ===
+          'credentials' ? (
             <form
               className="auth-form"
               onSubmit={
@@ -924,60 +897,63 @@ export default function App() {
 
               <input
                 type="email"
-                placeholder="Email"
+                required
                 autoComplete="email"
+                placeholder="Email"
                 value={
                   authForm.email
                 }
-                onChange={(e) =>
+                onChange={(event) =>
                   setAuthForm({
                     ...authForm,
                     email:
-                      e.target.value,
+                      event.target.value,
                   })
                 }
-                required
               />
 
               <input
                 type="password"
-                placeholder="Password"
+                required
+                minLength={8}
                 autoComplete={
                   authMode ===
                   'login'
                     ? 'current-password'
                     : 'new-password'
                 }
+                placeholder="Password"
                 value={
                   authForm.password
                 }
-                onChange={(e) =>
+                onChange={(event) =>
                   setAuthForm({
                     ...authForm,
                     password:
-                      e.target.value,
+                      event.target.value,
                   })
                 }
-                required
               />
 
               <button
                 className="primary-btn"
                 type="submit"
+                disabled={
+                  authLoading
+                }
               >
-                {authMode === 'login'
-                  ? 'Login'
-                  : 'Create account'}
+                {authLoading
+                  ? 'PLEASE WAIT...'
+                  : authMode ===
+                    'login'
+                  ? 'LOGIN'
+                  : 'CREATE ACCOUNT'}
               </button>
 
             </form>
-          )}
+          ) : (
+            /* OTP */
 
-          {/* =========================
-              OTP VERIFICATION
-          ========================= */}
-
-          {authStep === 'otp' && (
             <form
               className="auth-form"
               onSubmit={
@@ -986,30 +962,20 @@ export default function App() {
             >
 
               <div
-                className="otp-header"
-                style={{
-                  textAlign: 'center',
-                  marginBottom: '16px',
-                }}
+                className="otp-info"
               >
-                <div
-                  className="auth-brand"
-                  style={{
-                    fontSize: '20px',
-                    marginBottom: '8px',
-                  }}
-                >
+                <strong>
                   VERIFY EMAIL
-                </div>
+                </strong>
 
-                <p className="auth-copy">
-                  We sent a 6-digit
-                  verification code to:
+                <p>
+                  A 6-digit OTP was
+                  sent to:
                 </p>
 
-                <strong>
+                <span>
                   {pendingEmail}
-                </strong>
+                </span>
               </div>
 
               <input
@@ -1017,28 +983,401 @@ export default function App() {
                 inputMode="numeric"
                 autoComplete="one-time-code"
                 maxLength={6}
+                pattern="[0-9]{6}"
                 placeholder="Enter 6-digit OTP"
                 value={otp}
-                onChange={(e) => {
+                onChange={(event) => {
                   const value =
-                    e.target.value
-                      .replace(/\D/g, '')
+                    event.target.value
+                      .replace(
+                        /\D/g,
+                        ''
+                      )
                       .slice(0, 6)
 
                   setOtp(value)
                 }}
-                required
               />
 
               <button
                 className="primary-btn"
                 type="submit"
                 disabled={
+                  authLoading ||
                   otp.length !== 6
                 }
               >
-                Verify Email
+                {authLoading
+                  ? 'VERIFYING...'
+                  : 'VERIFY EMAIL'}
               </button>
 
               <button
-                type
+                type="button"
+                className="secondary-btn"
+                disabled={
+                  authLoading
+                }
+                onClick={
+                  handleResendOtp
+                }
+              >
+                RESEND OTP
+              </button>
+
+              <button
+                type="button"
+                className="secondary-btn"
+                onClick={() => {
+                  setAuthStep(
+                    'credentials'
+                  )
+                  setOtp('')
+                  setError('')
+                }}
+              >
+                CHANGE EMAIL
+              </button>
+
+            </form>
+          )}
+
+          {error && (
+            <div className="error-box">
+              {error}
+            </div>
+          )}
+
+        </div>
+      </div>
+    )
+  }
+
+  /* =========================
+     MAIN APPLICATION
+  ========================= */
+
+  return (
+    <div className="app-shell">
+
+      <Sidebar
+        chats={visibleChats}
+        activeChatId={
+          activeChatId
+        }
+        onNewChat={newChat}
+        onSelectChat={
+          openChat
+        }
+        onDeleteChat={
+          deleteChat
+        }
+        search={search}
+        setSearch={setSearch}
+        collapsed={collapsed}
+        onToggle={() =>
+          setCollapsed(
+            (value) => !value
+          )
+        }
+      />
+
+      <main className="main-panel">
+
+        {/* TOPBAR */}
+
+        <header className="topbar">
+
+          <div>
+
+            <div className="status-line">
+              ● ONLINE · VOICE CHANNEL
+              READY · AI LINK ESTABLISHED
+            </div>
+
+            <h1>
+              How may I assist you?
+            </h1>
+
+          </div>
+
+          <div className="topbar-actions">
+
+            <button
+              className="icon-btn"
+              onClick={() =>
+                setShowSettings(true)
+              }
+              title="Settings"
+            >
+              <Settings
+                size={18}
+              />
+            </button>
+
+            <button
+              className="icon-btn"
+              onClick={
+                handleLogout
+              }
+              title="Logout"
+            >
+              <LogOut
+                size={18}
+              />
+            </button>
+
+          </div>
+
+        </header>
+
+        {/* CHAT */}
+
+        <section className="chat-stage">
+
+          <AnimatePresence mode="wait">
+
+            {messages.length === 0 ? (
+              <motion.div
+                className="hero-card"
+                initial={{
+                  opacity: 0,
+                  y: 12,
+                }}
+                animate={{
+                  opacity: 1,
+                  y: 0,
+                }}
+              >
+
+                <Bot size={34} />
+
+                <h2>
+                  ULTRON CORE ONLINE
+                </h2>
+
+                <p>
+                  Type a prompt, use
+                  your microphone, or
+                  issue a command like
+                  <code>
+                    /help
+                  </code>
+                  .
+                </p>
+
+              </motion.div>
+            ) : (
+              <div className="message-stack">
+
+                {messages.map(
+                  (message) => (
+                    <MessageBubble
+                      key={
+                        message.id
+                      }
+                      message={
+                        message
+                      }
+                      onSpeak={
+                        speak
+                      }
+                      onCopy={
+                        copyText
+                      }
+                      onRegenerate={
+                        regenerateLast
+                      }
+                      onDelete={() =>
+                        deleteMessageLocal(
+                          message.id
+                        )
+                      }
+                    />
+                  )
+                )}
+
+                {sending && (
+                  <div className="typing-indicator">
+                    ULTRON IS THINKING...
+                  </div>
+                )}
+
+              </div>
+            )}
+
+          </AnimatePresence>
+
+          <div ref={endRef} />
+
+        </section>
+
+        {/* COMPOSER */}
+
+        <section className="composer">
+
+          <button
+            className={`mic-btn ${
+              listening
+                ? 'listening'
+                : ''
+            }`}
+            onClick={
+              listening
+                ? stop
+                : start
+            }
+            disabled={
+              !voiceSupported
+            }
+            title={
+              voiceSupported
+                ? 'Voice typing'
+                : 'Voice typing not supported'
+            }
+          >
+            <Mic size={20} />
+          </button>
+
+          <button
+            className="mic-btn"
+            onClick={
+              stopSpeaking
+            }
+            title="Stop speaking"
+          >
+            <PauseCircle
+              size={20}
+            />
+          </button>
+
+          <input
+            ref={inputRef}
+            value={input}
+            disabled={sending}
+            onChange={(event) =>
+              setInput(
+                event.target.value
+              )
+            }
+            placeholder={
+              listening
+                ? 'Listening...'
+                : 'Ask Ultron...'
+            }
+            onKeyDown={(event) => {
+              if (
+                event.key ===
+                'Enter' &&
+                !event.shiftKey
+              ) {
+                event.preventDefault()
+                sendMessage()
+              }
+            }}
+          />
+
+          <button
+            className="send-btn"
+            disabled={
+              sending ||
+              !input.trim()
+            }
+            onClick={() =>
+              sendMessage()
+            }
+          >
+            <SendHorizonal
+              size={18}
+            />
+          </button>
+
+        </section>
+
+        {/* COMMAND STRIP */}
+
+        <div className="command-strip">
+
+          {[
+            '/help',
+            '/clear',
+            '/new',
+            '/history',
+            '/settings',
+            '/voice',
+          ].map(
+            (command) => (
+              <button
+                key={command}
+                onClick={() =>
+                  sendMessage(
+                    command
+                  )
+                }
+              >
+                {command}
+              </button>
+            )
+          )}
+
+        </div>
+
+        {error && (
+          <div className="error-box">
+            {error}
+          </div>
+        )}
+
+        {voiceError && (
+          <div className="error-box">
+            {voiceError}
+          </div>
+        )}
+
+      </main>
+
+      {/* SETTINGS */}
+
+      <SettingsPanel
+        open={
+          showSettings
+        }
+        onClose={() =>
+          setShowSettings(false)
+        }
+        apiKey={apiKey}
+        setApiKey={setApiKey}
+        onSaveApiKey={
+          handleSaveApiKey
+        }
+        apiKeyConfigured={
+          apiKeyConfigured
+        }
+        csrfToken={
+          csrfToken
+        }
+        model={model}
+        setModel={setModel}
+        temperature={
+          temperature
+        }
+        setTemperature={
+          setTemperature
+        }
+        maxTokens={
+          maxTokens
+        }
+        setMaxTokens={
+          setMaxTokens
+        }
+        systemPrompt={
+          systemPrompt
+        }
+        setSystemPrompt={
+          setSystemPrompt
+        }
+      />
+
+    </div>
+  )
+                }
