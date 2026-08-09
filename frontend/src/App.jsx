@@ -328,24 +328,33 @@ export default function App() {
   ========================= */
 
   async function handleVerifyOtp(event) {
-    event.preventDefault()
+  event.preventDefault()
+  setError('')
 
-    setError('')
+  if (!otp || otp.length !== 6) {
+    setError('Enter the 6-digit OTP sent to your email.')
+    return
+  }
 
-    if (!otp || otp.length !== 6) {
-      setError(
-        'Enter the 6-digit OTP sent to your email.'
-      )
-      return
-    }
+  setAuthLoading(true)
 
-    setAuthLoading(true)
+  try {
+    await api.verifyOtp(pendingEmail, otp)
 
-    try {
-      await api.verifyOtp(
-        pendingEmail,
-        otp
-      )
+    // verifyOtp already saves the JWT.
+    // Do NOT call login() again.
+    await loadSession()
+
+    setAuthStep('credentials')
+    setPendingEmail('')
+    setOtp('')
+    setAuthForm(initialForm)
+  } catch (err) {
+    setError(err.message || 'Invalid or expired OTP.')
+  } finally {
+    setAuthLoading(false)
+  }
+      }
 
       /*
        * OTP verification completed.
