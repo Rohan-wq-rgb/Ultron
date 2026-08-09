@@ -99,14 +99,16 @@ def _otp_max_attempts():
 # CREATE / REPLACE OTP
 # ============================================================
 
-def _create_and_send_otp(user):
+ def _create_and_send_otp(user):
     """
-    Create a new OTP for the user,
-    save only its hash,
-    and send the actual OTP by email.
+    Prepare a new OTP.
+
+    IMPORTANT:
+    This function does NOT commit.
+    The caller commits only after the email
+    has been successfully sent.
     """
 
-    # Remove old OTP if one exists
     existing_otp = EmailOtp.query.filter_by(
         user_id=user.id
     ).first()
@@ -115,10 +117,8 @@ def _create_and_send_otp(user):
         db.session.delete(existing_otp)
         db.session.flush()
 
-    # Generate OTP
     otp_code = _generate_otp()
 
-    # Create OTP database record
     otp_row = EmailOtp(
         user_id=user.id,
         email=user.email,
@@ -133,20 +133,16 @@ def _create_and_send_otp(user):
     )
 
     db.session.add(otp_row)
-    db.session.commit()
+    db.session.flush()
 
-    # Send OTP email
     try:
         send_verification_email(
             user.email,
             otp_code
         )
-
     except EmailDeliveryError:
-        # If email fails, remove OTP
-        db.session.delete(otp_row)
-        db.session.commit()
-
+        # No commit happened.
+        # Rollback restores the previous state.
         raise
 
     return True
@@ -230,44 +226,47 @@ def register():
         }), 409
 
     # Create new user
-    user = User(
-        email=email,
-        password_hash=hash_password(password)
-    )
+user = User(
+    email=email,
+    password_hash=hash_password(password)
+)
 
-    db.session.add(user)
+db.session.add(user)
 
-    try:
-        db.session.flush()
+try:
+    db.session.flush()
 
-        # Create and send OTP
-        _create_and_send_otp(user)
+    # Email must succeed BEFORE commit.
+    _create_and_send_otp(user)
 
-    except EmailDeliveryError:
-        db.session.rollback()
+    # Commit only after email was sent.
+    db.session.commit()
 
-        return jsonify({
-            "error": (
-                "Account could not be verified because "
-                "the verification email could not be sent."
-            )
-        }), 500
-
-    except IntegrityError:
-        db.session.rollback()
-
-        return jsonify({
-            "error": (
-                "An account with this email already exists."
-            )
-        }), 409
+except EmailDeliveryError:
+    db.session.rollback()
 
     return jsonify({
-        "message": "Verification code sent to your email.",
-        "verification_required": True,
-        "email": email,
-    }), 201
+        "error": (
+            "We could not send the verification email. "
+            "Your account was not created. "
+            "Please try again."
+        )
+    }), 500
 
+except IntegrityError:
+    db.session.rollback()
+
+    return jsonify({
+        "error": (
+            "An account with this email already exists."
+        )
+    }), 409
+
+return jsonify({
+    "message": "Verification code sent to your email.",
+    "verification_required": True,
+    "email": email,
+}), 201
 
 # ============================================================
 # VERIFY OTP
