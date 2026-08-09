@@ -130,14 +130,14 @@ export default function App() {
   }
 
   async function handleSaveApiKey(token) {
-    try {
-      await api.saveApiKey(apiKey, token)
-      setApiKey('')
-      setApiKeyConfigured(true)
-      setShowSettings(false)
-    } catch (err) {
-      setError(err.message)
-    }
+  try {
+    await api.saveApiKey(apiKey, token)
+    setApiKey('')
+    setApiKeyConfigured(true)
+    setShowSettings(false)
+  } catch (err) {
+    setError(err.message)
+  }
   }
 
   async function newChat() {
