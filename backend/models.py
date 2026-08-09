@@ -54,4 +54,28 @@ class Message(db.Model):
     created_at = db.Column(db.DateTime(timezone=True), default=utcnow, nullable=False)
 
     chat = relationship("Chat", back_populates="messages")
+class EmailOtp(db.Model):
+    __tablename__ = "email_otps"
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(
+        db.Integer,
+        db.ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+        unique=True,
+        index=True,
+    )
+    email = db.Column(db.String(255), nullable=False, index=True)
+    code_hash = db.Column(db.String(255), nullable=False)
+    expires_at = db.Column(db.DateTime(timezone=True), nullable=False)
+    attempts = db.Column(db.Integer, nullable=False, default=0)
+    created_at = db.Column(db.DateTime(timezone=True), default=utcnow, nullable=False)
+    updated_at = db.Column(
+        db.DateTime(timezone=True),
+        default=utcnow,
+        onupdate=utcnow,
+        nullable=False,
+    )
+
+    user = relationship("User")
   
