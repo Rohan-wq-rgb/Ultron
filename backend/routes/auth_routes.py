@@ -81,16 +81,24 @@ def register():
         attempts=0,
     )
     db.session.add(otp_row)
-    db.session.commit()
 
-    try:
-        send_verification_email(email, otp_code)
-    except EmailDeliveryError:
-        return jsonify({
-            "error": "Account created, but verification email could not be sent. Please resend the code.",
-            "verification_required": True,
-            "email": email,
-        }), 500
+try:
+    send_verification_email(email, otp_code)
+except EmailDeliveryError:
+    db.session.rollback()
+
+    return jsonify({
+        "error": "Verification email could not be sent. Please try again later.",
+        "verification_required": True,
+    }), 500
+
+db.session.commit()
+
+return jsonify({
+    "message": "Verification code sent to your email.",
+    "verification_required": True,
+    "email": email,
+}), 201
 
     return jsonify({
         "message": "Verification code sent to your email.",
