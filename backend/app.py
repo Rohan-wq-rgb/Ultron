@@ -5,7 +5,7 @@ from flask_cors import CORS
 from dotenv import load_dotenv
 from config import Config
 from database import db, migrate
-from routes.auth_routes import auth_bp
+from auth_routes import auth_bp
 from routes.api_key_routes import api_key_bp
 from routes.chat_routes import chat_bp
 
