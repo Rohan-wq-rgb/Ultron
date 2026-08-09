@@ -327,9 +327,14 @@ export default function App() {
      VERIFY OTP
   ========================= */
 
-  async function handleVerifyOtp(event) {
+async function handleVerifyOtp(event) {
   event.preventDefault()
   setError('')
+
+  if (!pendingEmail) {
+    setError('Email address is missing.')
+    return
+  }
 
   if (!otp || otp.length !== 6) {
     setError('Enter the 6-digit OTP sent to your email.')
@@ -339,64 +344,26 @@ export default function App() {
   setAuthLoading(true)
 
   try {
+    // Backend verifies OTP and returns JWT.
+    // api.js automatically stores the JWT.
     await api.verifyOtp(pendingEmail, otp)
 
-    // verifyOtp already saves the JWT.
-    // Do NOT call login() again.
+    // Now load authenticated session.
     await loadSession()
 
     setAuthStep('credentials')
     setPendingEmail('')
     setOtp('')
     setAuthForm(initialForm)
+
   } catch (err) {
-    setError(err.message || 'Invalid or expired OTP.')
+    setError(
+      err.message || 'Invalid or expired OTP.'
+    )
   } finally {
     setAuthLoading(false)
   }
-      }
-
-      /*
-       * OTP verification completed.
-       *
-       * Try to establish the session automatically.
-       */
-
-      try {
-        await api.login(
-          pendingEmail,
-          authForm.password
-        )
-
-        await loadSession()
-      } catch {
-        /*
-         * If backend doesn't automatically
-         * support login after verification,
-         * return user to login.
-         */
-
-        setAuthMode('login')
-        setAuthStep('credentials')
-        setAuthForm({
-          email: pendingEmail,
-          password: '',
-        })
-        setOtp('')
-
-        setError(
-          'Email verified successfully. Please login.'
-        )
-      }
-    } catch (err) {
-      setError(
-        err.message ||
-          'Invalid or expired OTP.'
-      )
-    } finally {
-      setAuthLoading(false)
-    }
-  }
+}
 
   /* =========================
      RESEND OTP
