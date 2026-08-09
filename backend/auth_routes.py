@@ -207,7 +207,7 @@ def register():
                     "verification_required": True,
                     "email": email,
                 }), 500
-
+            
             return jsonify({
                 "message": (
                     "This account is not verified yet. "
