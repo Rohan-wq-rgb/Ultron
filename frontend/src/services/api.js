@@ -57,7 +57,7 @@ export const api = {
       method: 'POST',
       body: { email, password },
     }),
-    verifyOtp: (email, otp) =>
+  verifyOtp: (email, otp) =>
     request('/api/auth/verify-otp', {
       method: 'POST',
       body: { email, otp },
