@@ -447,18 +447,20 @@ def resend_otp():
             "error": "Email is already verified."
         }), 400
 
-    try:
-        _create_and_send_otp(
-            user
-        )
+try:
+    _create_and_send_otp(user)
 
-    except EmailDeliveryError:
-        return jsonify({
-            "error": (
-                "Could not resend verification email. "
-                "Please try again later."
-            )
-        }), 500
+    db.session.commit()
+
+except EmailDeliveryError:
+    db.session.rollback()
+
+    return jsonify({
+        "error": (
+            "Could not resend verification email. "
+            "Please try again later."
+        )
+    }), 500
 
     return jsonify({
         "message": "Verification code resent.",
