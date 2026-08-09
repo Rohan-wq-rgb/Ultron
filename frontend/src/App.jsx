@@ -410,4 +410,27 @@ export default function App() {
   const [authStep, setAuthStep] = useState('credentials')
   const [otp, setOtp] = useState('')
   const [pendingEmail, setPendingEmail] = useState('')
+  async function handleVerifyOtp(e) {
+    e.preventDefault()
+    setError('')
+    try {
+      await api.verifyOtp(pendingEmail, otp)
+      setAuthStep('credentials')
+      setOtp('')
+      setPendingEmail('')
+      await loadSession()
+    } catch (err) {
+      setError(err.message)
+    }
+  }
+
+  async function handleResendOtp() {
+    setError('')
+    try {
+      await api.resendOtp(pendingEmail)
+      setError('Verification code resent to your email.')
+    } catch (err) {
+      setError(err.message)
+    }
+  }
               
